@@ -64,7 +64,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/payment", paymentRoutes);
 
 // =======================
-// 📁 Static Folder (Uploads)
+// 📁 Static Folder (Uploads) 
 // =======================
 
 const __dirname = path.resolve();

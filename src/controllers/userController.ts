@@ -9,20 +9,32 @@ export interface AuthRequest extends Request {
 }
 
 // =======================
-// Register User
+// Register User (First user becomes admin)
 // =======================
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password, age } = req.body;
 
+  // 1️⃣ Check if user with same email exists
   const userExists = await User.findOne({ email });
   if (userExists) {
     res.status(400);
     throw new Error('User already exists');
   }
 
-  // 👈 Always force new users to be non-admin
-  const user = await User.create({ name, email, password, age, isAdmin: false });
+  // 2️⃣ Check if this is the first user in the DB
+  const usersCount = await User.countDocuments({});
+  const isFirstUserAdmin = usersCount === 0; // agar DB empty, first user admin hoga
 
+  // 3️⃣ Create user
+  const user = await User.create({
+    name,
+    email,
+    password,
+    age,
+    isAdmin: isFirstUserAdmin, // pehla user admin, baaki false
+  });
+
+  // 4️⃣ Response
   res.status(201).json({
     _id: user._id,
     name: user.name,
