@@ -2,7 +2,7 @@ import { Router } from "express";
 import { createProduct, createProductReview, getProducts } from "../controllers/productController";
 import { protect, admin } from "../middlewares/authMiddleware";
 import validate from "../middlewares/validateMiddleware";
-import { createProductSchema } from "../validations/productValidation";
+import { createProductSchema, createReviewSchema } from "../validations/productValidation";
 
 const router = Router();
 
@@ -10,5 +10,5 @@ const router = Router();
 // Lekin product create karna Private + Admin hai
 router.get("/", getProducts);
 router.post("/", protect, admin, validate(createProductSchema), createProduct);
-router.post("/:id/reviews", protect, createProductReview)
+router.post("/:id/reviews", protect, validate(createReviewSchema), createProductReview)
 export default router;

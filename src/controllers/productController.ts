@@ -68,6 +68,7 @@ export const getProducts = asyncHandler(async (req: Request, res: Response) => {
 /* ================= CREATE REVIEW ================= */
 export const createProductReview = asyncHandler(
   async (req: AuthRequest, res: Response) => {
+    
     const { rating, comment } = req.body;
 
     const product = await Product.findById(req.params.id).populate(
@@ -91,7 +92,7 @@ export const createProductReview = asyncHandler(
 
     const review = {
       name: req.user.name,
-      rating: Number(rating),
+      rating,
       comment,
       user: req.user._id,
     };
@@ -110,4 +111,3 @@ export const createProductReview = asyncHandler(
     res.status(201).json(updatedProduct);
   },
 );
- 
