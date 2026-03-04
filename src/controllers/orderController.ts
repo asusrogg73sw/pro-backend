@@ -4,12 +4,16 @@ import Order from "../models/orderModel";
 import Product from "../models/productModel";
 import asyncHandler from "../middlewares/asyncHandler";
 
+interface AuthRequest extends Request {
+  user?: any; // Or your IUser interface
+}
+
 /* =========================================================
    @desc    Create new order (Race condition safe)
    @route   POST /api/orders
    @access  Private
 ========================================================= */
-export const addOrderItems = asyncHandler(async (req: any, res: Response) => {
+export const addOrderItems = asyncHandler(async (req: AuthRequest, res: Response) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -82,7 +86,7 @@ export const addOrderItems = asyncHandler(async (req: any, res: Response) => {
    @route   GET /api/orders/:id
    @access  Private
 ========================================================= */
-export const getOrderById = asyncHandler(async (req: any, res: Response) => {
+export const getOrderById = asyncHandler(async (req: AuthRequest, res: Response) => {
   const order = await Order.findById(req.params.id)
     .populate("user", "name email")
     .populate("orderItems.product", "name image price");
@@ -109,7 +113,7 @@ export const getOrderById = asyncHandler(async (req: any, res: Response) => {
    @route   PUT /api/orders/:id/pay
    @access  Private
 ========================================================= */
-export const updateOrderToPaid = asyncHandler(async (req: any, res: Response) => {
+export const updateOrderToPaid = asyncHandler(async (req: AuthRequest, res: Response) => {
   const order = await Order.findById(req.params.id);
 
   if (!order) {
@@ -136,7 +140,7 @@ export const updateOrderToPaid = asyncHandler(async (req: any, res: Response) =>
    @route   GET /api/orders/myorders
    @access  Private
 ========================================================= */
-export const getMyOrders = asyncHandler(async (req: any, res: Response) => {
+export const getMyOrders = asyncHandler(async (req: AuthRequest, res: Response) => {
   const orders = await Order.find({ user: req.user._id })
     .sort({ createdAt: -1 });
 
@@ -148,7 +152,7 @@ export const getMyOrders = asyncHandler(async (req: any, res: Response) => {
    @route   GET /api/orders
    @access  Private/Admin
 ========================================================= */
-export const getOrders = asyncHandler(async (_req: any, res: Response) => {
+export const getOrders = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const orders = await Order.find({})
     .populate("user", "id name")
     .sort({ createdAt: -1 });
@@ -162,7 +166,7 @@ export const getOrders = asyncHandler(async (_req: any, res: Response) => {
    @access  Private/Admin
 ========================================================= */
 export const updateOrderToDelivered = asyncHandler(
-  async (req: any, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) {

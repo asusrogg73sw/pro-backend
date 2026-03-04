@@ -18,7 +18,7 @@ interface IOrder extends Document {
     country: string;
   };
   paymentMethod: string;
-  paymentResult: {
+  paymentResult?: {
     id: string;
     status: string;
     update_time: string;
@@ -29,9 +29,9 @@ interface IOrder extends Document {
   shippingPrice: number;
   totalPrice: number;
   isPaid: boolean;
-  paidAt: Date;
+  paidAt?: Date;
   isDelivered: boolean;
-  deliveredAt: Date;
+  deliveredAt?: Date;
 }
 
 const orderSchema = new Schema<IOrder>(

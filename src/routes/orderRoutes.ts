@@ -1,21 +1,34 @@
 import { Router } from 'express';
-import { addOrderItems, getMyOrders, getOrderById, updateOrderToPaid } from '../controllers/orderController';
-import { protect } from '../middlewares/authMiddleware';
+import { 
+  addOrderItems, 
+  getMyOrders, 
+  getOrderById, 
+  updateOrderToPaid, 
+  getOrders, 
+  updateOrderToDelivered 
+} from '../controllers/orderController';
+import { protect, admin } from '../middlewares/authMiddleware'; // added admin middleware
 import validate from '../middlewares/validateMiddleware';
 import { createOrderSchema } from '../validations/orderValidation';
 
 const router = Router();
 
-// POST /api/orders
+// POST /api/orders → create new order
 router.route('/').post(protect, validate(createOrderSchema), addOrderItems);
 
-// User ke apne orders (Isay upar rakhein)
+// GET /api/orders → Admin: get all orders
+router.route('/').get(protect, admin, getOrders);
+
+// GET /api/orders/myorders → User: get own orders
 router.route('/myorders').get(protect, getMyOrders);
 
-// Specific order details
+// GET /api/orders/:id → Specific order
 router.route('/:id').get(protect, getOrderById);
 
-// Order payment update
+// PUT /api/orders/:id/pay → Update payment
 router.route('/:id/pay').put(protect, updateOrderToPaid);
+
+// PUT /api/orders/:id/deliver → Admin: update delivered status
+router.route('/:id/deliver').put(protect, admin, updateOrderToDelivered);
 
 export default router;
