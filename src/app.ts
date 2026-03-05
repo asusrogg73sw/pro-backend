@@ -1,5 +1,7 @@
+// import './config/envConfig'; 
+
 import express, { Application, Request, Response } from "express";
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 import path from "path";
 
 // Database
@@ -21,7 +23,7 @@ import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
 
-dotenv.config();
+// dotenv.config();
 connectDB();
 
 const app: Application = express();
