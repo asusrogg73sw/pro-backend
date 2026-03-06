@@ -1,4 +1,4 @@
-// import './config/envConfig'; 
+// import './config/envConfig';
 
 import express, { Application, Request, Response } from "express";
 // import dotenv from "dotenv";
@@ -22,20 +22,28 @@ import helmet from "helmet";
 import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
+import { handleStripeWebhook } from "./controllers/paymentController";
 
 // dotenv.config();
 connectDB();
 
 const app: Application = express();
 
+// 🛑 IMPORTANT: Webhook route express.json() se PEHLE aayega
+app.post(
+  "/api/payment/webhook",
+  express.raw({ type: "application/json" }), // Sirf is route ke liye raw parser
+  handleStripeWebhook,
+);
+
 // =======================
 // 🔐 Security Middlewares
 // =======================
 
 app.use(helmet()); // Secure HTTP headers
-app.use(cors());   // Enable CORS
+app.use(cors()); // Enable CORS
 
-app.use(hpp());    // Prevent HTTP Parameter Pollution
+app.use(hpp()); // Prevent HTTP Parameter Pollution
 
 // Rate Limiting (10 minutes mein 100 requests per IP)
 const limiter = rateLimit({
@@ -47,9 +55,10 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 
 // =======================
-// 📦 Body Parser
+// 📦 Body Parsers
 // =======================
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // =======================
 // 🌐 Routes
@@ -66,7 +75,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/payment", paymentRoutes);
 
 // =======================
-// 📁 Static Folder (Uploads) 
+// 📁 Static Folder (Uploads)
 // =======================
 
 const __dirname = path.resolve();
@@ -85,6 +94,6 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(
-    `Server running in ${process.env.NODE_ENV} mode on http://localhost:${PORT}`
+    `Server running in ${process.env.NODE_ENV} mode on http://localhost:${PORT}`,
   );
 });

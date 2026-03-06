@@ -26,7 +26,7 @@ router.route('/myorders').get(protect, getMyOrders);
 router.route('/:id').get(protect, getOrderById);
 
 // PUT /api/orders/:id/pay → Update payment
-router.route('/:id/pay').put(protect, updateOrderToPaid);
+router.route('/:id/pay').put(protect, admin, updateOrderToPaid);
 
 // PUT /api/orders/:id/deliver → Admin: update delivered status
 router.route('/:id/deliver').put(protect, admin, updateOrderToDelivered);
