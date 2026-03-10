@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/app.js",
+    "type": "module",
   "scripts": {
     "dev": "tsx -r dotenv/config --watch src/app.ts",
     "build": "tsc",
