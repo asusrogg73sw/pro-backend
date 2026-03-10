@@ -1,3 +1,5 @@
+import { Request, Response } from "express";
+
 import asyncHandler from "../middlewares/asyncHandler";
 import Order from "../models/orderModel";
 import User from "../models/userModel";
@@ -6,7 +8,7 @@ import Product from "../models/productModel";
 // @desc    Get Admin Dashboard Stats
 // @route   GET /api/admin/stats
 // @access  Private/Admin
-export const getDashboardStats = asyncHandler(async (req, res) => {
+export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
   // 1. Total Orders & Users Count
   const totalOrders = await Order.countDocuments();
   const totalUsers = await User.countDocuments();
@@ -36,7 +38,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 // @desc    Get Top 5 Best Selling Products
 // @route   GET /api/admin/top-products
 // @access  Private/Admin
-export const getTopSellingProducts = asyncHandler(async (req, res) => {
+export const getTopSellingProducts = asyncHandler(async (req: Request, res: Response) => {
   const topProducts = await Order.aggregate([
     { $match: { isPaid: true } }, // 1. Sirf Paid orders lo
     { $unwind: "$orderItems" },   // 2. Order items ki array ko khol do (har item ek alag document ban jaye)
@@ -58,7 +60,7 @@ export const getTopSellingProducts = asyncHandler(async (req, res) => {
 // @desc    Get Monthly Sales Data for Charts
 // @route   GET /api/admin/monthly-sales
 // @access  Private/Admin
-export const getMonthlySales = asyncHandler(async (req, res) => {
+export const getMonthlySales = asyncHandler(async (req: Request, res: Response) => {
   const monthlySales = await Order.aggregate([
     { $match: { isPaid: true } },
     {
