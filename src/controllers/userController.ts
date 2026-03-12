@@ -47,24 +47,42 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
 // =======================
 // Login User
 // =======================
+import { Request, Response } from "express";
+import asyncHandler from "express-async-handler";
+import User from "../models/userModel";
+import generateToken from "../utils/generateToken";
+
 export const authUser = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email }).select('+password');
+  // User find karo aur password bhi select karo
+  const user = await User.findOne({ email }).select("+password");
 
-  if (user && (await user.matchPassword(password))) {
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      age: user.age,
-      isAdmin: user.isAdmin,
-      token: generateToken(user._id.toString()),
-    });
-  } else {
+  if (!user) {
     res.status(401);
-    throw new Error('Invalid email or password');
+    throw new Error("Invalid email or password");
   }
+
+  // Password match check
+  const isMatch = await user.matchPassword(password);
+
+  if (!isMatch) {
+    res.status(401);
+    throw new Error("Invalid email or password");
+  }
+
+  // JWT cookie generate
+  generateToken(res, user._id.toString());
+
+  // Response send
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    age: user.age,
+    isAdmin: user.isAdmin,
+    message: "Login successful",
+  });
 });
 
 // =======================

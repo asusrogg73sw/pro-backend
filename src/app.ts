@@ -24,6 +24,7 @@ import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
 import { handleStripeWebhook } from "./controllers/paymentController";
+import cookieParser from 'cookie-parser';
 
 // dotenv.config();
 connectDB();
@@ -58,6 +59,7 @@ app.use("/api", limiter);
 // =======================
 // 📦 Body Parsers
 // =======================
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
