@@ -1,4 +1,4 @@
-import './config/envConfig';
+import "./config/envConfig";
 
 import express, { Application, Request, Response } from "express";
 // import dotenv from "dotenv";
@@ -24,7 +24,7 @@ import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
 import { handleStripeWebhook } from "./controllers/paymentController";
-import cookieParser from 'cookie-parser';
+import cookieParser from "cookie-parser";
 
 // dotenv.config();
 connectDB();
@@ -43,7 +43,13 @@ app.post(
 // =======================
 
 app.use(helmet()); // Secure HTTP headers
-app.use(cors()); // Enable CORS
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  }),
+);
 
 app.use(hpp()); // Prevent HTTP Parameter Pollution
 
