@@ -245,9 +245,9 @@ export const updateUserByAdmin = asyncHandler(
 export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
   res.cookie("jwt", "", {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     expires: new Date(0),
-    sameSite: "strict",
-    secure: process.env.NODE_ENV !== "development",
   });
   res.status(200).json({ message: "Logged out successfully" });
 });
