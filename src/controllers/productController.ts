@@ -124,3 +124,38 @@ export const deleteProduct = asyncHandler(async (req: Request, res: Response) =>
     throw new Error("Product not found");
   }
 });
+
+// 1. Kisi AKELI product ka data nikalne ke liye (Edit form ko bharne ke liye)
+export const getProductById = asyncHandler(async (req: Request, res: Response) => {
+  const product = await Product.findById(req.params.id);
+
+  if (product) {
+    res.json(product);
+  } else {
+    res.status(404);
+    throw new Error("Product not found");
+  }
+});
+
+// 2. Product ka data badalney (Update) ke liye
+export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
+  const { name, price, description, image, category, countInStock } = req.body;
+
+  const product = await Product.findById(req.params.id);
+
+  if (product) {
+    // Agar frontend se nayi value aayi hai to wo rakhlo, warna purani hi rehne do
+    product.name = name || product.name;
+    product.price = price !== undefined ? price : product.price;
+    product.description = description || product.description;
+    product.image = image || product.image;
+    product.category = category || product.category;
+    product.countInStock = countInStock !== undefined ? countInStock : product.countInStock;
+
+    const updatedProduct = await product.save();
+    res.json(updatedProduct);
+  } else {
+    res.status(404);
+    throw new Error("Product not found");
+  }
+});
