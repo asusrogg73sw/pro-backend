@@ -45,6 +45,12 @@ app.post(
 app.use(helmet()); // Secure HTTP headers
 
 app.use(
+  "/uploads",
+  helmet.crossOriginResourcePolicy({ policy: "cross-origin" }),
+  express.static("uploads")
+);
+
+app.use(
   cors({
     origin: ["http://localhost:5173"],
     credentials: true,
