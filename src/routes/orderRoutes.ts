@@ -1,34 +1,127 @@
-import { Router } from 'express';
-import { 
-  addOrderItems, 
-  getMyOrders, 
-  getOrderById, 
-  updateOrderToPaid, 
-  getOrders, 
-  updateOrderToDelivered 
-} from '../controllers/orderController';
-import { protect, admin } from '../middlewares/authMiddleware'; // added admin middleware
-import validate from '../middlewares/validateMiddleware';
-import { createOrderSchema } from '../validations/orderValidation';
+// backend/routes/orderRoutes.ts
+
+import { Router } from "express";
+
+/* =========================================================
+   CONTROLLERS
+   Ye saare functions orderController se aa rahe hain
+========================================================= */
+import {
+  addOrderItems,
+  getMyOrders,
+  getOrderById,
+  updateOrderToPaid,
+  getOrders,
+  updateOrderToDelivered,
+} from "../controllers/orderController";
+
+/* =========================================================
+   MIDDLEWARES
+========================================================= */
+
+// protect → Sirf logged-in users access kar sakte hain
+// admin   → Sirf admin access kar sakta hai
+import { protect, admin } from "../middlewares/authMiddleware";
+
+// Request body validation middleware
+import validate from "../middlewares/validateMiddleware";
+
+// Joi/Zod/Yup schema for order validation
+import { createOrderSchema } from "../validations/orderValidation";
 
 const router = Router();
 
-// POST /api/orders → create new order
-router.route('/').post(protect, validate(createOrderSchema), addOrderItems);
+/* =========================================================
+   @route   POST /api/orders
+   @desc    Create New Order
+   @access  Private
 
-// GET /api/orders → Admin: get all orders
-router.route('/').get(protect, admin, getOrders);
+   Flow:
+   User login hona chahiye
+   Request body validate hogi
+   Phir order create hoga
+========================================================= */
+router
+  .route("/")
+  .post(
+    protect,
+    validate(createOrderSchema),
+    addOrderItems
+  );
 
-// GET /api/orders/myorders → User: get own orders
-router.route('/myorders').get(protect, getMyOrders);
+/* =========================================================
+   @route   GET /api/orders
+   @desc    Get All Orders
+   @access  Private/Admin
 
-// GET /api/orders/:id → Specific order
-router.route('/:id').get(protect, getOrderById);
+   Sirf admin saare orders dekh sakta hai
+========================================================= */
+router
+  .route("/")
+  .get(
+    protect,
+    admin,
+    getOrders
+  );
 
-// PUT /api/orders/:id/pay → Update payment
-router.route('/:id/pay').put(protect, admin, updateOrderToPaid);
+/* =========================================================
+   @route   GET /api/orders/myorders
+   @desc    Get Logged In User Orders
+   @access  Private
 
-// PUT /api/orders/:id/deliver → Admin: update delivered status
-router.route('/:id/deliver').put(protect, admin, updateOrderToDelivered);
+   Current user ke orders fetch karega
+========================================================= */
+router
+  .route("/myorders")
+  .get(
+    protect,
+    getMyOrders
+  );
+
+/* =========================================================
+   @route   GET /api/orders/:id
+   @desc    Get Order By ID
+   @access  Private
+
+   User apna order dekh sakta hai
+   Admin kisi bhi user ka order dekh sakta hai
+========================================================= */
+router
+  .route("/:id")
+  .get(
+    protect,
+    getOrderById
+  );
+
+/* =========================================================
+   @route   PUT /api/orders/:id/pay
+   @desc    Update Order To Paid
+   @access  Private/Admin
+
+   Payment successful hone ke baad
+   order paid mark hoga
+========================================================= */
+router
+  .route("/:id/pay")
+  .put(
+    protect,
+    admin,
+    updateOrderToPaid
+  );
+
+/* =========================================================
+   @route   PUT /api/orders/:id/deliver
+   @desc    Update Order To Delivered
+   @access  Private/Admin
+
+   Admin order ko delivered mark karega
+========================================================= */
+router
+  .route("/:id/deliver")
+  .put(
+    protect,
+    admin,
+    updateOrderToDelivered
+  );
 
 export default router;
