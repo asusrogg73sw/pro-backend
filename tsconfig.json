@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
+    // NEW FIX: 'bundler' settings apply ki hain taake tsx/tsup bina extensions (.js) ke imports ko makkhan ki tarah chalane dein
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
     "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
@@ -10,6 +12,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*"], // NEW FIX: Include path ko fully optimize kiya hai
   "exclude": ["node_modules", "dist"]
 }

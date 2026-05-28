@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx -r dotenv/config --watch src/app.ts",
-    "build": "tsup src/app.ts --format esm --out-dir dist",
+    "build": "tsup src/app.ts --format esm --clean --out-dir dist",
     "start": "node dist/app.js"
   },
   "keywords": [],
