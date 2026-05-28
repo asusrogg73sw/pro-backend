@@ -1,7 +1,6 @@
 import "./config/envConfig";
 
 import express, { Application, Request, Response } from "express";
-// import dotenv from "dotenv";
 import path from "path";
 
 // Database
@@ -26,7 +25,6 @@ import cors from "cors";
 import { handleStripeWebhook } from "./controllers/paymentController";
 import cookieParser from "cookie-parser";
 
-// dotenv.config();
 connectDB();
 
 const app: Application = express();
@@ -42,12 +40,12 @@ app.post(
 // 🔐 Security Middlewares
 // =======================
 
-app.use(helmet()); // Secure HTTP headers
-
+// NEW FIX: Helmet ko is tarah config kiya hai ke ye cross-origin resource sharing (CORS) par images ko block na kare.
+// Is se Cart, Product List, aur Edit pages par broke icons ka masla permanent hal ho jayega.
 app.use(
-  "/uploads",
-  helmet.crossOriginResourcePolicy({ policy: "cross-origin" }),
-  express.static("uploads")
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
 );
 
 app.use(
@@ -94,8 +92,10 @@ app.use("/api/admin", adminRoutes);
 // 📁 Static Folder (Uploads)
 // =======================
 
+// NEW FIX: Pehle /uploads folder do jagah alag alag tareeqe se define tha jo clash kar raha tha.
+// Ab humne use aik hi makhsoos aur secure jagah par absolute path ke sath serve kar diya hai.
 const __dirname = path.resolve();
-app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // =======================
 // ❌ Error Middleware (Always Last)
