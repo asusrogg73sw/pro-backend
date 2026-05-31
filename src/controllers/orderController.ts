@@ -1,5 +1,4 @@
 // backend/controllers/orderController.ts
-
 import mongoose from "mongoose";
 import { Request, Response } from "express";
 
@@ -73,7 +72,6 @@ export const addOrderItems = asyncHandler(
       /* =====================================================
          SERVER SIDE PRICE CALCULATION
       ===================================================== */
-
       // 15% tax
       const taxPrice = Number((0.15 * itemsPrice).toFixed(2));
 
@@ -158,8 +156,6 @@ export const getOrderById = asyncHandler(
    @desc    Update Order To Paid
    @route   PUT /api/orders/:id/pay
    @access  Private
-
-   Payment successful hone ke baad
 ========================================================= */
 export const updateOrderToPaid = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -250,5 +246,50 @@ export const updateOrderToDelivered = asyncHandler(
     const updatedOrder = await order.save();
 
     res.json(updatedOrder);
+  }
+);
+
+/* =========================================================
+   🚀 NEW FIX: Cancel/Delete Unpaid Order Controller
+   @desc    Delete/Cancel An Unpaid Order & Restore Inventory Stock
+   @route   DELETE /api/orders/:id
+   @access  Private
+========================================================= */
+export const deleteOrder = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const order = await Order.findById(req.params.id);
+
+    // 1. Validation guard: Order exist karna chahiye
+    if (!order) {
+      res.status(404);
+      throw new Error("Order not found");
+    }
+
+    // 2. Authorization check: Sirf wahi user cancel kar sake jis ka order hai (ya admin)
+    if (order.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      res.status(401);
+      throw new Error("Not authorized to cancel this order");
+    }
+
+    // 3. Security Check: Agar order already paid hai toh delete block kar do
+    if (order.isPaid) {
+      res.status(400);
+      throw new Error("Paid orders cannot be deleted or canceled");
+    }
+
+    /* =====================================================
+       STOCK RESTORATION LOGIC 🔄
+       Order cancel hone par product stock wapis barhana hoga
+    ===================================================== */
+    for (const item of order.orderItems) {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { countInStock: item.qty }, // Stock safely increased back to inventory
+      });
+    }
+
+    // 4. Document deletion fire ki database se
+    await order.deleteOne();
+
+    res.json({ message: "Order successfully canceled and stock restored" });
   }
 );
