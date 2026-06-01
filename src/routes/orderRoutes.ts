@@ -12,7 +12,7 @@ import {
   updateOrderToPaid,
   getOrders,
   updateOrderToDelivered,
-  deleteOrder, // 🚀 NEW FIX: deleteOrder controller function ko import kiya
+  deleteOrder,
 } from "../controllers/orderController";
 
 /* =========================================================
@@ -34,11 +34,6 @@ const router = Router();
    @route   POST /api/orders
    @desc    Create New Order
    @access  Private
-
-   Flow:
-   User login hona chahiye
-   Request body validate hogi
-   Phir order create hoga
 ========================================================= */
 router
   .route("/")
@@ -81,9 +76,6 @@ router
    @route   GET & DELETE /api/orders/:id
    @desc    Get Order By ID / Cancel Unpaid Order
    @access  Private
-
-   User apna order dekh sakta hai aur delete/cancel kar sakta hai
-   Admin kisi bhi user ka order dekh sakta hai
 ========================================================= */
 router
   .route("/:id")
@@ -92,23 +84,23 @@ router
     getOrderById
   )
   .delete(
-    protect, 
+    protect,
     deleteOrder
-  ); // 🚀 NEW FIX: DELETE method ko standard private protect gateway ke sath bind kiya
+  );
 
 /* =========================================================
    @route   PUT /api/orders/:id/pay
    @desc    Update Order To Paid
-   @access  Private/Admin
+   @access  Private
 
-   Payment successful hone ke baad
-   order paid mark hoga
+   🚀 NEW FIX: Yahan se 'admin' middleware remove kar diya hai.
+   Ab har logged-in customer (jaise Ali) apna order check-out karkay 
+   safely pay kar sakega.
 ========================================================= */
 router
   .route("/:id/pay")
   .put(
-    protect,
-    admin,
+    protect, // 🚀 NEW FIX: Sirf user ka login hona kafi hai, admin guard removed!
     updateOrderToPaid
   );
 
@@ -117,7 +109,7 @@ router
    @desc    Update Order To Delivered
    @access  Private/Admin
 
-   Admin order ko delivered mark karega
+   Admin order ko delivered mark karega (Is par admin guard laga rahega)
 ========================================================= */
 router
   .route("/:id/deliver")
