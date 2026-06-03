@@ -100,7 +100,7 @@ export const getOrderById = asyncHandler(
   }
 );
 
-// 3. Update Order To Paid Controller
+// 3. Update Order To Paid Controller (FIXED: Added shippingAddress updating logic)
 export const updateOrderToPaid = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const order = await Order.findById(req.params.id);
@@ -110,14 +110,19 @@ export const updateOrderToPaid = asyncHandler(
       throw new Error("Order not found");
     }
 
+    // FIX: Agar checkout step par user apna updated profile address bhej raha hai, toh order par overwrite karein
+    if (req.body.shippingAddress) {
+      order.shippingAddress = req.body.shippingAddress;
+    }
+
     order.isPaid = true;
     order.paidAt = new Date();
 
     order.paymentResult = {
       id: req.body.id,
       status: req.body.status,
-      update_time: req.body.update_time,
-      email_address: req.body.email_address,
+      update_time: req.body.update_time || new Date().toISOString(),
+      email_address: req.body.email_address || req.body.email,
     };
 
     const updatedOrder = await order.save();

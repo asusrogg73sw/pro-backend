@@ -1,6 +1,17 @@
 import { Schema, model, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
+// 🚀 Embedded Address Schema Interface
+export interface IShippingAddress {
+  country: string;
+  firstName: string;
+  lastName: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  phone: string;
+}
+
 // Interface for User Document
 export interface IUser extends Document {
   name: string;
@@ -8,6 +19,7 @@ export interface IUser extends Document {
   password: string;
   age: number;
   isAdmin: boolean;
+  shippingAddress?: IShippingAddress; // 🚀 Added to user schema instance
   matchPassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -39,6 +51,16 @@ const userSchema = new Schema<IUser>(
     isAdmin: {
       type: Boolean,
       default: false,
+    },
+    // 🚀 Embedded address structural sub-document mappings
+    shippingAddress: {
+      country: { type: String, default: "Pakistan" },
+      firstName: { type: String, default: "" },
+      lastName: { type: String, default: "" },
+      address: { type: String, default: "" },
+      city: { type: String, default: "" },
+      postalCode: { type: String, default: "" },
+      phone: { type: String, default: "" },
     },
   },
   {

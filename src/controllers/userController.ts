@@ -32,13 +32,22 @@ export const registerUser = asyncHandler(
     const usersCount = await User.countDocuments({});
     const isFirstUserAdmin = usersCount === 0;
 
-    // Create new user
+    // Create new user (with empty layout configurations for shipping fields)
     const user = await User.create({
       name,
       email,
       password,
       age,
       isAdmin: isFirstUserAdmin,
+      shippingAddress: {
+        country: "Pakistan",
+        firstName: "",
+        lastName: "",
+        address: "",
+        city: "",
+        postalCode: "",
+        phone: "",
+      },
     });
 
     // Response
@@ -48,6 +57,7 @@ export const registerUser = asyncHandler(
       email: user.email,
       age: user.age,
       isAdmin: user.isAdmin,
+      shippingAddress: user.shippingAddress,
     });
   },
 );
@@ -78,13 +88,14 @@ export const authUser = asyncHandler(async (req: Request, res: Response) => {
   // Generate JWT cookie
   generateToken(res, user._id.toString());
 
-  // Send response
+  // Send response (including shipping schema asset context)
   res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
     age: user.age,
     isAdmin: user.isAdmin,
+    shippingAddress: user.shippingAddress,
     message: "Login successful",
   });
 });
@@ -123,6 +134,7 @@ export const getUserProfile = asyncHandler(
       email: req.user.email,
       age: req.user.age,
       isAdmin: req.user.isAdmin,
+      shippingAddress: req.user.shippingAddress, // 🚀 Syncs client states upon manual interface reloads
     });
   },
 );
@@ -167,9 +179,18 @@ export const updateUserProfile = asyncHandler(
       user.password = req.body.password;
     }
 
-    // SECURITY:
-    // Never allow normal user to update admin role
-    // user.isAdmin = req.body.isAdmin;
+    // 🚀 Deep mapping incoming shipping logs payload safely
+    if (req.body.shippingAddress) {
+      user.shippingAddress = {
+        country: req.body.shippingAddress.country ?? user.shippingAddress?.country,
+        firstName: req.body.shippingAddress.firstName ?? user.shippingAddress?.firstName,
+        lastName: req.body.shippingAddress.lastName ?? user.shippingAddress?.lastName,
+        address: req.body.shippingAddress.address ?? user.shippingAddress?.address,
+        city: req.body.shippingAddress.city ?? user.shippingAddress?.city,
+        postalCode: req.body.shippingAddress.postalCode ?? user.shippingAddress?.postalCode,
+        phone: req.body.shippingAddress.phone ?? user.shippingAddress?.phone,
+      };
+    }
 
     const updatedUser = await user.save();
 
@@ -179,6 +200,7 @@ export const updateUserProfile = asyncHandler(
       email: updatedUser.email,
       age: updatedUser.age,
       isAdmin: updatedUser.isAdmin,
+      shippingAddress: updatedUser.shippingAddress, // 🚀 Return payload to flush Redux slice safely
     });
   },
 );
@@ -327,11 +349,11 @@ export const updateUserByAdmin = asyncHandler(
         email: updatedUser.email,
         age: updatedUser.age,
         isAdmin: updatedUser.isAdmin,
+        shippingAddress: updatedUser.shippingAddress, // Fallback asset mapping layer for admin queries
       },
     });
   },
 );
-
 
 // ======================================================
 // Admin: Toggle User Admin Role
@@ -393,6 +415,7 @@ export const toggleUserAdmin = asyncHandler(
         email: updatedUser.email,
         age: updatedUser.age,
         isAdmin: updatedUser.isAdmin,
+        shippingAddress: updatedUser.shippingAddress,
       },
     });
   },
