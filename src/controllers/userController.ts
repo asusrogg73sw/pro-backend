@@ -3,17 +3,12 @@ import User, { IUser } from "../models/userModel";
 import asyncHandler from "../middlewares/asyncHandler";
 import generateToken from "../utils/generateToken";
 
-// ======================================================
-// Custom Request Type
-// req.user middleware se attach hota hai
-// ======================================================
 export interface AuthRequest extends Request {
   user?: IUser;
 }
 
 // ======================================================
-// Register User
-// First registered user automatically becomes Admin
+// Register User (FIXED: Added JWT Cookie Generation)
 // ======================================================
 export const registerUser = asyncHandler(
   async (req: Request, res: Response) => {
@@ -27,12 +22,11 @@ export const registerUser = asyncHandler(
       throw new Error("User already exists");
     }
 
-    // Count total users
-    // Agar database empty hai to pehla user admin banega
+    // Count total users to assign admin role to the first user
     const usersCount = await User.countDocuments({});
     const isFirstUserAdmin = usersCount === 0;
 
-    // Create new user (with empty layout configurations for shipping fields)
+    // Create new user with empty shipping schemas
     const user = await User.create({
       name,
       email,
@@ -50,7 +44,10 @@ export const registerUser = asyncHandler(
       },
     });
 
-    // Response
+    // FIX: Generate JWT token cookie directly upon successful registration
+    generateToken(res, user._id.toString());
+
+    // Send complete payload structured response
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -64,12 +61,10 @@ export const registerUser = asyncHandler(
 
 // ======================================================
 // Login User
-// Authenticate user + generate JWT cookie
 // ======================================================
 export const authUser = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  // Find user and include password field
   const user = await User.findOne({ email }).select("+password");
 
   if (!user) {
@@ -77,7 +72,6 @@ export const authUser = asyncHandler(async (req: Request, res: Response) => {
     throw new Error("Invalid email or password");
   }
 
-  // Compare entered password with hashed password
   const isMatch = await user.matchPassword(password);
 
   if (!isMatch) {
@@ -85,10 +79,8 @@ export const authUser = asyncHandler(async (req: Request, res: Response) => {
     throw new Error("Invalid email or password");
   }
 
-  // Generate JWT cookie
   generateToken(res, user._id.toString());
 
-  // Send response (including shipping schema asset context)
   res.status(200).json({
     _id: user._id,
     name: user.name,
@@ -102,7 +94,6 @@ export const authUser = asyncHandler(async (req: Request, res: Response) => {
 
 // ======================================================
 // Logout User
-// Clear JWT cookie
 // ======================================================
 export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
   res.cookie("jwt", "", {
@@ -119,7 +110,6 @@ export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
 
 // ======================================================
 // Get Own Profile
-// Logged-in user can view own profile
 // ======================================================
 export const getUserProfile = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -134,14 +124,13 @@ export const getUserProfile = asyncHandler(
       email: req.user.email,
       age: req.user.age,
       isAdmin: req.user.isAdmin,
-      shippingAddress: req.user.shippingAddress, // 🚀 Syncs client states upon manual interface reloads
+      shippingAddress: req.user.shippingAddress,
     });
   },
 );
 
 // ======================================================
 // Update Own Profile
-// User can update own profile only
 // ======================================================
 export const updateUserProfile = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -157,29 +146,22 @@ export const updateUserProfile = asyncHandler(
       throw new Error("User not found");
     }
 
-    // Check if new email already exists
     if (req.body.email && req.body.email !== user.email) {
-      const emailExists = await User.findOne({
-        email: req.body.email,
-      });
-
+      const emailExists = await User.findOne({ email: req.body.email });
       if (emailExists) {
         res.status(400);
         throw new Error("Email already in use");
       }
     }
 
-    // Update fields
     user.name = req.body.name ?? user.name;
     user.email = req.body.email ?? user.email;
     user.age = req.body.age ?? user.age;
 
-    // Update password if provided
     if (req.body.password) {
       user.password = req.body.password;
     }
 
-    // 🚀 Deep mapping incoming shipping logs payload safely
     if (req.body.shippingAddress) {
       user.shippingAddress = {
         country: req.body.shippingAddress.country ?? user.shippingAddress?.country,
@@ -200,14 +182,13 @@ export const updateUserProfile = asyncHandler(
       email: updatedUser.email,
       age: updatedUser.age,
       isAdmin: updatedUser.isAdmin,
-      shippingAddress: updatedUser.shippingAddress, // 🚀 Return payload to flush Redux slice safely
+      shippingAddress: updatedUser.shippingAddress,
     });
   },
 );
 
 // ======================================================
 // Admin: Get All Users
-// Only admin can access
 // ======================================================
 export const getUsers = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -216,26 +197,21 @@ export const getUsers = asyncHandler(
       throw new Error("Access denied, admin only");
     }
 
-    // Exclude passwords
     const users = await User.find({}).select("-password");
-
     res.json(users);
   },
 );
 
 // ======================================================
 // Admin: Delete User
-// Admin can delete normal users only
 // ======================================================
 export const deleteUser = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    // Admin check
     if (!req.user?.isAdmin) {
       res.status(403);
       throw new Error("Access denied, admin only");
     }
 
-    // Find target user
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -243,44 +219,31 @@ export const deleteUser = asyncHandler(
       throw new Error("User not found");
     }
 
-    // SECURITY:
-    // Prevent admin from deleting himself
     if (user._id.toString() === req.user._id.toString()) {
       res.status(400);
       throw new Error("Admin cannot delete himself");
     }
 
-    // SECURITY:
-    // Prevent deleting another admin
     if (user.isAdmin) {
       res.status(400);
       throw new Error("Bhai, aap doosre Admin ko delete nahi kar sakte!");
     }
 
-    // Delete user
     await User.deleteOne({ _id: user._id });
-
-    res.json({
-      message: "User deleted successfully",
-    });
+    res.json({ message: "User deleted successfully" });
   },
 );
 
 // ======================================================
 // Admin: Update User
-// Admin can:
-// - update user details
-// - make/remove admin
 // ======================================================
 export const updateUserByAdmin = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    // Admin check
     if (!req.user?.isAdmin) {
       res.status(403);
       throw new Error("Access denied, admin only");
     }
 
-    // Find target user
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -288,57 +251,35 @@ export const updateUserByAdmin = asyncHandler(
       throw new Error("User not found");
     }
 
-    // Check email uniqueness
     if (req.body.email && req.body.email !== user.email) {
-      const emailExists = await User.findOne({
-        email: req.body.email,
-      });
-
+      const emailExists = await User.findOne({ email: req.body.email });
       if (emailExists) {
         res.status(400);
         throw new Error("Email already in use");
       }
     }
 
-    // ==================================================
-    // SECURITY CHECKS
-    // ==================================================
-
-    // Prevent admin from removing own admin access
-    if (
-      user._id.toString() === req.user._id.toString() &&
-      req.body.isAdmin === false
-    ) {
-      res.status(400);
+    if (user._id.toString() === req.user._id.toString() && req.body.isAdmin === false) {
+       Greenwood: res.status(400);
       throw new Error("Admin cannot remove his own admin access");
     }
 
-    // Prevent removing the LAST admin
     if (user.isAdmin && req.body.isAdmin === false) {
-      const adminCount = await User.countDocuments({
-        isAdmin: true,
-      });
-
+      const adminCount = await User.countDocuments({ isAdmin: true });
       if (adminCount === 1) {
         res.status(400);
         throw new Error("Cannot remove the last admin from system");
       }
     }
 
-    // ==================================================
-    // Update fields
-    // ==================================================
-
     user.name = req.body.name ?? user.name;
     user.email = req.body.email ?? user.email;
     user.age = req.body.age ?? user.age;
 
-    // Admin role update
     if (req.body.isAdmin !== undefined) {
       user.isAdmin = req.body.isAdmin;
     }
 
-    // Save updated user
     const updatedUser = await user.save();
 
     res.json({
@@ -349,7 +290,7 @@ export const updateUserByAdmin = asyncHandler(
         email: updatedUser.email,
         age: updatedUser.age,
         isAdmin: updatedUser.isAdmin,
-        shippingAddress: updatedUser.shippingAddress, // Fallback asset mapping layer for admin queries
+        shippingAddress: updatedUser.shippingAddress,
       },
     });
   },
@@ -357,17 +298,14 @@ export const updateUserByAdmin = asyncHandler(
 
 // ======================================================
 // Admin: Toggle User Admin Role
-// Admin <-> Normal User
 // ======================================================
 export const toggleUserAdmin = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    // Only admin allowed
     if (!req.user?.isAdmin) {
       res.status(403);
       throw new Error("Access denied, admin only");
     }
 
-    // Find target user
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -375,40 +313,24 @@ export const toggleUserAdmin = asyncHandler(
       throw new Error("User not found");
     }
 
-    // ==================================================
-    // SECURITY CHECKS
-    // ==================================================
-
-    // Prevent admin from removing own admin access
     if (user._id.toString() === req.user._id.toString()) {
       res.status(400);
       throw new Error("Admin cannot change his own admin role");
     }
 
-    // Prevent removing the LAST admin
     if (user.isAdmin) {
-      const adminCount = await User.countDocuments({
-        isAdmin: true,
-      });
-
+      const adminCount = await User.countDocuments({ isAdmin: true });
       if (adminCount === 1) {
         res.status(400);
         throw new Error("Cannot remove the last admin from system");
       }
     }
 
-    // ==================================================
-    // Toggle Admin Role
-    // ==================================================
-
     user.isAdmin = !user.isAdmin;
-
     const updatedUser = await user.save();
 
     res.json({
-      message: `User role updated to ${
-        updatedUser.isAdmin ? "Admin" : "Normal User"
-      }`,
+      message: `User role updated to ${updatedUser.isAdmin ? "Admin" : "Normal User"}`,
       user: {
         _id: updatedUser._id,
         name: updatedUser.name,

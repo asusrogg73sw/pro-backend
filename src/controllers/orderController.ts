@@ -13,6 +13,7 @@ interface AuthRequest extends Request {
 // 1. Create New Order Controller
 export const addOrderItems = asyncHandler(
   async (req: AuthRequest, res: Response) => {
+    // console.log("VALIDATED REQ BODY:", req.body);
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -27,6 +28,7 @@ export const addOrderItems = asyncHandler(
       let itemsPrice = 0;
 
       for (const item of orderItems) {
+        // ✅ DEPRECATION WARNING FIXED: 'new: true' replaced with "returnDocument: 'after'"
         const product = await Product.findOneAndUpdate(
           {
             _id: item.product,
@@ -36,7 +38,7 @@ export const addOrderItems = asyncHandler(
             $inc: { countInStock: -item.qty },
           },
           {
-            new: true,
+            returnDocument: 'after',
             session,
           }
         );
@@ -61,7 +63,7 @@ export const addOrderItems = asyncHandler(
         taxPrice,
         shippingPrice,
         totalPrice,
-        isUserLocked: false // structural default safety state
+        isUserLocked: false
       });
 
       const createdOrder = await order.save({ session });
@@ -100,7 +102,7 @@ export const getOrderById = asyncHandler(
   }
 );
 
-// 3. Update Order To Paid Controller (FIXED: Added shippingAddress updating logic)
+// 3. Update Order To Paid Controller
 export const updateOrderToPaid = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const order = await Order.findById(req.params.id);
@@ -110,7 +112,6 @@ export const updateOrderToPaid = asyncHandler(
       throw new Error("Order not found");
     }
 
-    // FIX: Agar checkout step par user apna updated profile address bhej raha hai, toh order par overwrite karein
     if (req.body.shippingAddress) {
       order.shippingAddress = req.body.shippingAddress;
     }
@@ -164,7 +165,7 @@ export const updateOrderToDelivered = asyncHandler(
   }
 );
 
-// 🔒 1. Toggle Lock State (Chahy Paid ho ya Unpaid, user toggle kr saky)
+// Toggle Lock State
 export const toggleOrderLock = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const order = await Order.findById(req.params.id);
@@ -174,13 +175,11 @@ export const toggleOrderLock = asyncHandler(
       throw new Error("Order not found");
     }
 
-    // Security Check: Sirf wahi user lock/unlock kr saky jis ka order hai
     if (order.user.toString() !== req.user._id.toString()) {
       res.status(401);
       throw new Error("Not authorized to manage this order lock configuration");
     }
 
-    // Ab koi 'isPaid' check nahi hai. User has full control!
     order.isUserLocked = !order.isUserLocked;
     const updatedOrder = await order.save();
 
@@ -188,7 +187,7 @@ export const toggleOrderLock = asyncHandler(
   }
 );
 
-// 🗑️ 2. Delete / Cancel Any Order (Paid or Unpaid)
+// Delete / Cancel Any Order
 export const deleteOrder = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const order = await Order.findById(req.params.id);
@@ -198,19 +197,16 @@ export const deleteOrder = asyncHandler(
       throw new Error("Order not found");
     }
 
-    // Authorization Check
     if (order.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
       res.status(401);
       throw new Error("Not authorized to cancel this order");
     }
 
-    // 🚨 STRICT LOCK CHECK: Agar user ne manually lock on kiya hua hai, toh delete nahi hoga
     if (order.isUserLocked) {
       res.status(400);
       throw new Error("Order is locked. Please unlock it before deleting.");
     }
 
-    // Agar stock restore krna chahein (mostly unpaid orders k liye zaroori hota hai, pr paid pr bhi safe side run ho ga)
     for (const item of order.orderItems) {
       await Product.findByIdAndUpdate(item.product, {
         $inc: { countInStock: item.qty },
