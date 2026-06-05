@@ -1,4 +1,3 @@
-// backend/models/orderModel.ts
 import { Schema, model, Document, Types } from "mongoose";
 
 interface IOrderItem {
@@ -13,10 +12,13 @@ interface IOrder extends Document {
   user: Types.ObjectId;
   orderItems: IOrderItem[];
   shippingAddress: {
+    firstName: string; // 🚀 Added
+    lastName: string;  // 🚀 Added
     address: string;
     city: string;
     postalCode: string;
     country: string;
+    phone: string;     // 🚀 Added
   };
   paymentMethod: string;
   paymentResult?: {
@@ -33,7 +35,7 @@ interface IOrder extends Document {
   paidAt?: Date;
   isDelivered: boolean;
   deliveredAt?: Date;
-  isUserLocked: boolean; // 🔒 NEW PERSISTENCE FLAG SPECIFICATION
+  isUserLocked: boolean; 
 }
 
 const orderSchema = new Schema<IOrder>(
@@ -53,10 +55,13 @@ const orderSchema = new Schema<IOrder>(
       },
     ],
     shippingAddress: {
+      firstName: { type: String, required: true, default: "" },  // 🚀 Added
+      lastName: { type: String, required: true, default: "" },   // 🚀 Added
       address: { type: String, required: true },
       city: { type: String, required: true },
       postalCode: { type: String, required: true },
       country: { type: String, required: true },
+      phone: { type: String, required: true, default: "" },      // 🚀 Added
     },
     paymentMethod: { type: String, required: true },
     itemsPrice: { type: Number, required: true, default: 0.0 },
@@ -67,7 +72,7 @@ const orderSchema = new Schema<IOrder>(
     paidAt: { type: Date },
     isDelivered: { type: Boolean, required: true, default: false },
     deliveredAt: { type: Date },
-    isUserLocked: { type: Boolean, required: true, default: false }, // 🔒 Default false rahega jab order create hoga
+    isUserLocked: { type: Boolean, required: true, default: false }, 
   },
   { timestamps: true },
 );
