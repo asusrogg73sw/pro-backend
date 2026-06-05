@@ -2,11 +2,89 @@ import mongoose from "mongoose";
 import { Request, Response } from "express";
 import Order from "../models/orderModel";
 import Product from "../models/productModel";
+import User from "../models/userModel";
 import asyncHandler from "../middlewares/asyncHandler";
 
 interface AuthRequest extends Request {
   user?: any;
 }
+
+// ==========================================
+// ADMIN DASHBOARD STATS CONTROLLERS
+// ==========================================
+
+// @desc    Get Admin Dashboard Stats
+// @route   GET /api/admin/stats
+// @access  Private/Admin
+export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
+  const totalOrders = await Order.countDocuments();
+  const totalUsers = await User.countDocuments();
+  const totalProducts = await Product.countDocuments();
+
+  const salesData = await Order.aggregate([
+    { $match: { isPaid: true } },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: "$totalPrice" },
+      },
+    },
+  ]);
+
+  const totalRevenue = salesData.length > 0 ? salesData[0].totalRevenue : 0;
+
+  res.json({
+    totalOrders,
+    totalUsers,
+    totalProducts,
+    totalRevenue,
+  });
+});
+
+// @desc    Get Top 5 Best Selling Products
+// @route   GET /api/admin/top-products
+// @access  Private/Admin
+export const getTopSellingProducts = asyncHandler(async (req: Request, res: Response) => {
+  const topProducts = await Order.aggregate([
+    { $match: { isPaid: true } },
+    { $unwind: "$orderItems" },
+    {
+      $group: {
+        _id: "$orderItems.product",
+        name: { $first: "$orderItems.name" },
+        totalQty: { $sum: "$orderItems.qty" },
+        totalRevenue: { $sum: { $multiply: ["$orderItems.qty", "$orderItems.price"] } }
+      }
+    },
+    { $sort: { totalQty: -1 } },
+    { $limit: 5 }
+  ]);
+
+  res.json(topProducts);
+});
+
+// @desc    Get Monthly Sales Data for Charts
+// @route   GET /api/admin/monthly-sales
+// @access  Private/Admin
+export const getMonthlySales = asyncHandler(async (req: Request, res: Response) => {
+  const monthlySales = await Order.aggregate([
+    { $match: { isPaid: true } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$paidAt" } },
+        totalSales: { $sum: "$totalPrice" },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  res.json(monthlySales);
+});
+
+// ==========================================
+// CORE LOGISTICS & CORE ORDER CONTROLLERS
+// ==========================================
 
 // 1. Create or Update Existing Pending Order Controller
 export const addOrderItems = asyncHandler(
@@ -22,24 +100,20 @@ export const addOrderItems = asyncHandler(
         throw new Error("No order items");
       }
 
-      // 🔐 SECURITY & VALIDATION FILTER FOR EXISTING ORDERS
       if (orderId) {
         const existingOrder = await Order.findById(orderId).session(session);
         
         if (existingOrder) {
-          // Rule A: Aglay user ko kisi aur ka order modify karne se rokna (Cross-User Exploit Fix)
           if (existingOrder.user.toString() !== req.user._id.toString()) {
             res.status(403);
             throw new Error("Not authorized to modify this order context.");
           }
 
-          // Rule B: Paid orders ko touch karne se rokna
           if (existingOrder.isPaid) {
             res.status(400);
             throw new Error("Cannot modify an order that has already been paid.");
           }
 
-          // --- STOCK MANAGEMENT BLOCK (Revert old stock before calculating new) ---
           for (const item of existingOrder.orderItems) {
             await Product.findByIdAndUpdate(
               item.product,
@@ -77,7 +151,6 @@ export const addOrderItems = asyncHandler(
       const shippingPrice = itemsPrice > 100 ? 0 : 10;
       const totalPrice = Number((itemsPrice + taxPrice + shippingPrice).toFixed(2));
 
-      // ⚡ GLOBAL STRIP MAPPING SANITIZATION
       const cleanAddress = {
         firstName: shippingAddress?.firstName?.trim() || "",
         lastName: shippingAddress?.lastName?.trim() || "",
@@ -91,7 +164,6 @@ export const addOrderItems = asyncHandler(
       let order;
 
       if (orderId) {
-        // Find existing operational order (Humne upar verify kar liya ke user authorization valid hai)
         order = await Order.findById(orderId).session(session);
         if (!order) {
           throw new Error("Target order context not found");
@@ -105,7 +177,6 @@ export const addOrderItems = asyncHandler(
         order.shippingPrice = shippingPrice;
         order.totalPrice = totalPrice;
       } else {
-        // Create clean fresh tracking document for logged-in user
         order = new Order({
           orderItems,
           user: req.user._id,
@@ -128,7 +199,7 @@ export const addOrderItems = asyncHandler(
     } catch (error: any) {
       await session.abortTransaction();
       session.endSession();
-      if (res.statusCode === 200) res.status(400); // Bad Request fallback if status wasn't custom set
+      if (res.statusCode === 200) res.status(400);
       throw new Error(error.message || "Order processing failed");
     }
   }
@@ -227,7 +298,7 @@ export const updateOrderToDelivered = asyncHandler(
   }
 );
 
-// Toggle Lock State
+// 7. Toggle Lock State (User + Admin Allowed Override)
 export const toggleOrderLock = asyncHandler(
   async (req: AuthRequest, res: Response): Promise<void> => {
     const order = await Order.findById(req.params.id);
@@ -238,7 +309,9 @@ export const toggleOrderLock = asyncHandler(
     }
 
     const orderUserRefId = order.user?._id?.toString() || order.user?.toString();
-    if (orderUserRefId !== req.user._id.toString()) {
+    
+    // ✅ CRITICAL FIX: Owner aur Admin donon bypass parameters handle ho rahay hain ab
+    if (orderUserRefId !== req.user._id.toString() && !req.user.isAdmin) {
       res.status(401);
       throw new Error("Not authorized to manage this order lock configuration");
     }
@@ -250,7 +323,7 @@ export const toggleOrderLock = asyncHandler(
   }
 );
 
-// Delete / Cancel Any Order
+// 8. Delete / Cancel Any Order (User + Admin Checked)
 export const deleteOrder = asyncHandler(
   async (req: AuthRequest, res: Response): Promise<void> => {
     const session = await mongoose.startSession();

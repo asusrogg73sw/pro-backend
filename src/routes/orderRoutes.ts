@@ -1,4 +1,3 @@
-// backend/routes/orderRoutes.ts
 import { Router } from "express";
 import {
   addOrderItems,
@@ -8,7 +7,11 @@ import {
   getOrders,
   updateOrderToDelivered,
   deleteOrder,
-  toggleOrderLock, // imported controller flag function handler
+  toggleOrderLock,
+  // ⚡ Yeh naye stats controllers import karein:
+  getDashboardStats,
+  getTopSellingProducts,
+  getMonthlySales,
 } from "../controllers/orderController";
 import { protect, admin } from "../middlewares/authMiddleware";
 import validate from "../middlewares/validateMiddleware";
@@ -16,19 +19,26 @@ import { createOrderSchema } from "../validations/orderValidation";
 
 const router = Router();
 
+// ==========================================
+// ADMIN DASHBOARD STATS ROUTES
+// ==========================================
+router.route("/admin/stats").get(protect, admin, getDashboardStats);
+router.route("/admin/top-products").get(protect, admin, getTopSellingProducts);
+router.route("/admin/monthly-sales").get(protect, admin, getMonthlySales);
+
+// ==========================================
+// CORE ORDER ROUTES
+// ==========================================
 router.route("/").post(protect, validate(createOrderSchema), addOrderItems);
 router.route("/").get(protect, admin, getOrders);
 router.route("/myorders").get(protect, getMyOrders);
 
-// 🔒 REFACTOR EXPRESS INJECTED DYNAMIC ID SEGMENTS CHAINING
 router
   .route("/:id")
   .get(protect, getOrderById)
   .delete(protect, deleteOrder);
 
-// 🔒 ROUTE ASSIGNMENT FOR THE LOCK SWITCH ENGINE
 router.route("/:id/toggle-lock").put(protect, toggleOrderLock);
-
 router.route("/:id/pay").put(protect, updateOrderToPaid);
 router.route("/:id/deliver").put(protect, admin, updateOrderToDelivered);
 
